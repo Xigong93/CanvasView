@@ -115,8 +115,8 @@ class CanvasView @JvmOverloads constructor(
 
     /** 清除画板 */
     fun clear() {
-        val canvas = bitmapCanvas ?: return
-        canvas.drawColor(Color.WHITE)
+        bitmapCanvas?.drawColor(Color.WHITE)
+        lines.clear()
         invalidate()
     }
 
