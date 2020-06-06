@@ -26,17 +26,17 @@
             tools:ignore="HardcodedText" />
 
         <Button
-            android:id="@+id/preview_button"
+            android:id="@+id/with_draw_button"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="previous"
+            android:text="With Draw"
             tools:ignore="HardcodedText" />
 
         <Button
-            android:id="@+id/next_button"
+            android:id="@+id/restore_button"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="next"
+            android:text="restore"
             tools:ignore="HardcodedText" />
     </LinearLayout>
 </FrameLayout>

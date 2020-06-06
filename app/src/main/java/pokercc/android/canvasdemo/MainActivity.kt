@@ -12,5 +12,8 @@ class MainActivity : AppCompatActivity() {
         activityMainBinding.clearButton.setOnClickListener {
             activityMainBinding.canvasView.clear()
         }
+        activityMainBinding.withDrawButton.setOnClickListener {
+            activityMainBinding.canvasView.withDraw()
+        }
     }
 }
