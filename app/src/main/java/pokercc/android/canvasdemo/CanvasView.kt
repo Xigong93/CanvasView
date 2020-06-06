@@ -22,12 +22,13 @@ class CanvasView @JvmOverloads constructor(
     context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
 ) : View(context, attrs, defStyleAttr) {
 
-    private val lineWidth = 8f.dpToPx()
+    private val lineWidth = 4f.dpToPx()
 
     private val linePaint = Paint(Paint.ANTI_ALIAS_FLAG).also {
         it.strokeWidth = lineWidth
         it.color = Color.BLACK
         it.strokeCap = Paint.Cap.ROUND
+        it.strokeJoin=Paint.Join.ROUND
     }
     private var bitmap: Bitmap? = null
     private var bitmapCanvas: Canvas? = null
@@ -61,6 +62,8 @@ class CanvasView @JvmOverloads constructor(
         }
         val canvas = bitmapCanvas ?: return
         canvas.drawLine(lastX, lastY, x, y, linePaint)
+        lastX = x
+        lastY = y
     }
 
     @SuppressLint("ClickableViewAccessibility")
@@ -95,4 +98,24 @@ class CanvasView @JvmOverloads constructor(
         return true
     }
 
+    /**
+     * 是否有历史笔迹
+     */
+    fun hadHistory(): Boolean = true
+
+    /**
+     * 撤销
+     */
+    fun withDraw() {
+
+    }
+
+    /**
+     * 清除画板
+     */
+    fun clear() {
+        val canvas = bitmapCanvas ?: return
+        canvas.drawColor(Color.WHITE)
+        invalidate()
+    }
 }
