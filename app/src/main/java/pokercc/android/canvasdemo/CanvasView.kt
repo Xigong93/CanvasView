@@ -65,13 +65,19 @@ class CanvasView @JvmOverloads constructor(
 
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
         super.onSizeChanged(w, h, oldw, oldh)
+        bitmap?.recycle()
         bitmap = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
         bitmapCanvas = Canvas(bitmap!!)
     }
 
+
     private var lastX = 0f
     private var lastY = 0f
 
+    override fun onDetachedFromWindow() {
+        super.onDetachedFromWindow()
+        bitmap?.recycle()
+    }
     @SuppressLint("ClickableViewAccessibility")
     override fun onTouchEvent(event: MotionEvent): Boolean {
         when (event.actionMasked) {
