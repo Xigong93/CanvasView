@@ -30,13 +30,14 @@ class CanvasView @JvmOverloads constructor(
         it.strokeWidth = lineWidth
         it.color = Color.BLACK
         it.strokeCap = Paint.Cap.ROUND
+        it.style = Paint.Style.STROKE
         it.strokeJoin = Paint.Join.ROUND
     }
     private var bitmap: Bitmap? = null
     private var bitmapCanvas: Canvas? = null
 
-    private val lines = ArrayList<Line>()
-    private var currentLine: Line? = null
+    private val paths = ArrayList<Path>()
+    private var currentPath: Path? = null
     private fun Float.dpToPx(): Float =
         TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, this, resources.displayMetrics)
 
@@ -45,17 +46,16 @@ class CanvasView @JvmOverloads constructor(
         super.onDraw(canvas)
         TraceCompat.beginSection("${LOG_TAG}:onDraw")
         try {
-            for (line in lines) {
-                line.draw(canvas, linePaint)
+            for (path in paths) {
+                canvas.drawPath(path, linePaint)
+
             }
-            currentLine?.draw(canvas, linePaint)
+            currentPath?.let {
+                canvas.drawPath(it, linePaint)
+            }
         } finally {
             TraceCompat.endSection()
         }
-//        bitmap?.let {
-//            canvas.drawBitmap(it, left.toFloat(), top.toFloat(), null)
-//        }
-
     }
 
 
@@ -69,8 +69,8 @@ class CanvasView @JvmOverloads constructor(
     override fun onTouchEvent(event: MotionEvent): Boolean {
         when (event.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
-                currentLine = Line()
-                currentLine?.addPoint(event.x, event.y)
+                currentPath = Path()
+                currentPath?.moveTo(event.x, event.y)
             }
             MotionEvent.ACTION_POINTER_DOWN -> {
 
@@ -79,7 +79,7 @@ class CanvasView @JvmOverloads constructor(
                 for (i in 0 until event.historySize) {
                     val hx = event.getHistoricalX(i)
                     val hy = event.getHistoricalY(i)
-                    currentLine?.addPoint(hx, hy)
+                    currentPath?.lineTo(hx, hy)
                 }
                 invalidate()
             }
@@ -88,10 +88,10 @@ class CanvasView @JvmOverloads constructor(
             }
             MotionEvent.ACTION_UP,
             MotionEvent.ACTION_CANCEL -> {
-                currentLine?.let {
-                    lines.add(it)
+                currentPath?.let {
+                    paths.add(it)
                 }
-                currentLine = null
+                currentPath = null
 
             }
         }
@@ -100,15 +100,15 @@ class CanvasView @JvmOverloads constructor(
     }
 
     /** 是否有历史笔迹 */
-    fun hadHistory(): Boolean = lines.isNotEmpty()
+    fun hadHistory(): Boolean = paths.isNotEmpty()
 
     /** 获取笔画的数量 */
-    fun getLineCount(): Int = lines.size
+    fun getLineCount(): Int = paths.size
 
     /** 撤销 */
     fun withDraw() {
-        if (lines.isNotEmpty()) {
-            lines.removeAt(lines.size - 1)
+        if (paths.isNotEmpty()) {
+            paths.removeAt(paths.size - 1)
         }
         invalidate()
     }
@@ -116,27 +116,7 @@ class CanvasView @JvmOverloads constructor(
     /** 清除画板 */
     fun clear() {
         bitmapCanvas?.drawColor(Color.WHITE)
-        lines.clear()
+        paths.clear()
         invalidate()
-    }
-
-    private class Line {
-
-        val xArray = mutableListOf<Float>()
-        val yArray = mutableListOf<Float>()
-        fun draw(canvas: Canvas, paint: Paint) {
-            require(xArray.size == yArray.size)
-            for (i in 1 until xArray.size)
-                canvas.drawLine(
-                    xArray[i - 1], yArray[i - 1],
-                    xArray[i], yArray[i],
-                    paint
-                )
-        }
-
-        fun addPoint(x: Float, y: Float) {
-            xArray.add(x)
-            yArray.add(y)
-        }
     }
 }
