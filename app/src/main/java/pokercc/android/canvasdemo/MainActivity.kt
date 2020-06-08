@@ -13,7 +13,10 @@ class MainActivity : AppCompatActivity() {
             activityMainBinding.canvasView.clear()
         }
         activityMainBinding.withDrawButton.setOnClickListener {
-            activityMainBinding.canvasView.withDraw()
+            activityMainBinding.canvasView.undo()
+        }
+        activityMainBinding.restoreButton.setOnClickListener {
+            activityMainBinding.canvasView.redo()
         }
     }
 }

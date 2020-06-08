@@ -8,6 +8,7 @@ import android.util.TypedValue
 import android.view.MotionEvent
 import android.view.View
 import androidx.core.os.TraceCompat
+import java.util.*
 
 /**
  * 功能:
@@ -36,7 +37,8 @@ class CanvasView @JvmOverloads constructor(
     private var bitmap: Bitmap? = null
     private var bitmapCanvas: Canvas? = null
 
-    private val paths = ArrayList<Path>()
+    private val paths = Stack<Path>()
+    private val rubbishPaths = Stack<Path>()
     private var currentPath: Path? = null
     private fun Float.dpToPx(): Float =
         TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, this, resources.displayMetrics)
@@ -48,10 +50,12 @@ class CanvasView @JvmOverloads constructor(
         try {
             for (path in paths) {
                 canvas.drawPath(path, linePaint)
-
             }
-            currentPath?.let {
-                canvas.drawPath(it, linePaint)
+//            currentPath?.let {
+//                canvas.drawPath(it, linePaint)
+//            }
+            bitmap?.let {
+                canvas.drawBitmap(it, left.toFloat(), top.toFloat(), null)
             }
         } finally {
             TraceCompat.endSection()
@@ -65,12 +69,17 @@ class CanvasView @JvmOverloads constructor(
         bitmapCanvas = Canvas(bitmap!!)
     }
 
+    private var lastX = 0f
+    private var lastY = 0f
+
     @SuppressLint("ClickableViewAccessibility")
     override fun onTouchEvent(event: MotionEvent): Boolean {
         when (event.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
                 currentPath = Path()
                 currentPath?.moveTo(event.x, event.y)
+                lastX = event.x
+                lastY = event.y
             }
             MotionEvent.ACTION_POINTER_DOWN -> {
 
@@ -79,6 +88,9 @@ class CanvasView @JvmOverloads constructor(
                 for (i in 0 until event.historySize) {
                     val hx = event.getHistoricalX(i)
                     val hy = event.getHistoricalY(i)
+                    bitmapCanvas?.drawLine(lastX, lastY, hx, hy, linePaint)
+                    lastX = hx
+                    lastY = hy
                     currentPath?.lineTo(hx, hy)
                 }
                 invalidate()
@@ -89,10 +101,11 @@ class CanvasView @JvmOverloads constructor(
             MotionEvent.ACTION_UP,
             MotionEvent.ACTION_CANCEL -> {
                 currentPath?.let {
-                    paths.add(it)
+                    paths.push(it)
                 }
                 currentPath = null
-
+                clearCanvas()
+                invalidate()
             }
         }
 
@@ -106,17 +119,32 @@ class CanvasView @JvmOverloads constructor(
     fun getLineCount(): Int = paths.size
 
     /** 撤销 */
-    fun withDraw() {
+    fun undo() {
         if (paths.isNotEmpty()) {
-            paths.removeAt(paths.size - 1)
+            val path = paths.pop()
+            rubbishPaths.push(path)
+        }
+        invalidate()
+    }
+
+    /** 恢复 */
+    fun redo() {
+        if (rubbishPaths.isNotEmpty()) {
+            val path = rubbishPaths.pop()
+            paths.push(path)
         }
         invalidate()
     }
 
     /** 清除画板 */
     fun clear() {
-        bitmapCanvas?.drawColor(Color.WHITE)
+        clearCanvas()
+        rubbishPaths.clear()
         paths.clear()
         invalidate()
+    }
+
+    private fun clearCanvas() {
+        bitmapCanvas?.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR)
     }
 }
