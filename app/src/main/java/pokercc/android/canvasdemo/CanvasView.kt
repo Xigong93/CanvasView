@@ -37,13 +37,11 @@ class CanvasView @JvmOverloads constructor(
         it.strokeJoin = Paint.Join.ROUND
     }
 
-
     private val strokes = ArrayList<Stroke>()
     private val rubbishStrokes = ArrayList<Stroke>()
     private var currentStroke: Stroke? = null
     private fun Float.dpToPx(): Float =
         TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, this, resources.displayMetrics)
-
 
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
@@ -57,41 +55,24 @@ class CanvasView @JvmOverloads constructor(
         }
     }
 
-
-    private var lastX = 0f
-    private var lastY = 0f
-
-
     @SuppressLint("ClickableViewAccessibility")
     override fun onTouchEvent(event: MotionEvent): Boolean {
         when (event.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
                 currentStroke = Stroke(event.x, event.y)
                 strokes.add(currentStroke!!)
-                lastX = event.x
-                lastY = event.y
-            }
-            MotionEvent.ACTION_POINTER_DOWN -> {
-
             }
             MotionEvent.ACTION_MOVE -> {
                 for (i in 0 until event.historySize) {
                     val hx = event.getHistoricalX(i)
                     val hy = event.getHistoricalY(i)
-                    lastX = hx
-                    lastY = hy
                     currentStroke?.addPoint(hx, hy)
                 }
                 invalidate()
             }
-            MotionEvent.ACTION_POINTER_UP -> {
-
-            }
             MotionEvent.ACTION_UP,
             MotionEvent.ACTION_CANCEL -> {
                 currentStroke = null
-                clearCanvas()
-                invalidate()
             }
         }
 
@@ -124,13 +105,9 @@ class CanvasView @JvmOverloads constructor(
 
     /** 清除画板 */
     fun clear() {
-        clearCanvas()
         rubbishStrokes.clear()
         strokes.clear()
         invalidate()
-    }
-
-    private fun clearCanvas() {
     }
 
     private class Stroke(private val startX: Float, private val startY: Float) {
