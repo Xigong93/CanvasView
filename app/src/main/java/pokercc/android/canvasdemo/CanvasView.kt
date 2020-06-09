@@ -2,13 +2,15 @@ package pokercc.android.canvasdemo
 
 import android.annotation.SuppressLint
 import android.content.Context
-import android.graphics.*
+import android.graphics.Canvas
+import android.graphics.Color
+import android.graphics.Paint
+import android.graphics.Path
 import android.util.AttributeSet
 import android.util.TypedValue
 import android.view.MotionEvent
 import android.view.View
 import androidx.core.os.TraceCompat
-import java.util.*
 
 /**
  * 功能:
@@ -34,12 +36,11 @@ class CanvasView @JvmOverloads constructor(
         it.style = Paint.Style.STROKE
         it.strokeJoin = Paint.Join.ROUND
     }
-    private var bitmap: Bitmap? = null
-    private var bitmapCanvas: Canvas? = null
 
-    private val paths = Stack<Path>()
-    private val rubbishPaths = Stack<Path>()
-    private var currentPath: Path? = null
+
+    private val strokes = ArrayList<Stroke>()
+    private val rubbishStrokes = ArrayList<Stroke>()
+    private var currentStroke: Stroke? = null
     private fun Float.dpToPx(): Float =
         TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, this, resources.displayMetrics)
 
@@ -48,14 +49,8 @@ class CanvasView @JvmOverloads constructor(
         super.onDraw(canvas)
         TraceCompat.beginSection("${LOG_TAG}:onDraw")
         try {
-            for (path in paths) {
-                canvas.drawPath(path, linePaint)
-            }
-//            currentPath?.let {
-//                canvas.drawPath(it, linePaint)
-//            }
-            bitmap?.let {
-                canvas.drawBitmap(it, left.toFloat(), top.toFloat(), null)
+            for (stroke in strokes) {
+                stroke.draw(canvas, linePaint)
             }
         } finally {
             TraceCompat.endSection()
@@ -63,27 +58,16 @@ class CanvasView @JvmOverloads constructor(
     }
 
 
-    override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
-        super.onSizeChanged(w, h, oldw, oldh)
-        bitmap?.recycle()
-        bitmap = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
-        bitmapCanvas = Canvas(bitmap!!)
-    }
-
-
     private var lastX = 0f
     private var lastY = 0f
 
-    override fun onDetachedFromWindow() {
-        super.onDetachedFromWindow()
-        bitmap?.recycle()
-    }
+
     @SuppressLint("ClickableViewAccessibility")
     override fun onTouchEvent(event: MotionEvent): Boolean {
         when (event.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
-                currentPath = Path()
-                currentPath?.moveTo(event.x, event.y)
+                currentStroke = Stroke(event.x, event.y)
+                strokes.add(currentStroke!!)
                 lastX = event.x
                 lastY = event.y
             }
@@ -94,10 +78,9 @@ class CanvasView @JvmOverloads constructor(
                 for (i in 0 until event.historySize) {
                     val hx = event.getHistoricalX(i)
                     val hy = event.getHistoricalY(i)
-                    bitmapCanvas?.drawLine(lastX, lastY, hx, hy, linePaint)
                     lastX = hx
                     lastY = hy
-                    currentPath?.lineTo(hx, hy)
+                    currentStroke?.addPoint(hx, hy)
                 }
                 invalidate()
             }
@@ -106,10 +89,7 @@ class CanvasView @JvmOverloads constructor(
             }
             MotionEvent.ACTION_UP,
             MotionEvent.ACTION_CANCEL -> {
-                currentPath?.let {
-                    paths.push(it)
-                }
-                currentPath = null
+                currentStroke = null
                 clearCanvas()
                 invalidate()
             }
@@ -119,25 +99,25 @@ class CanvasView @JvmOverloads constructor(
     }
 
     /** 是否有历史笔迹 */
-    fun hadHistory(): Boolean = paths.isNotEmpty()
+    fun hadHistory(): Boolean = strokes.isNotEmpty()
 
     /** 获取笔画的数量 */
-    fun getLineCount(): Int = paths.size
+    fun getLineCount(): Int = strokes.size
 
     /** 撤销 */
     fun undo() {
-        if (paths.isNotEmpty()) {
-            val path = paths.pop()
-            rubbishPaths.push(path)
+        if (strokes.isNotEmpty()) {
+            val path = strokes.removeAt(strokes.size - 1)
+            rubbishStrokes.add(path)
         }
         invalidate()
     }
 
     /** 恢复 */
     fun redo() {
-        if (rubbishPaths.isNotEmpty()) {
-            val path = rubbishPaths.pop()
-            paths.push(path)
+        if (rubbishStrokes.isNotEmpty()) {
+            val path = rubbishStrokes.removeAt(rubbishStrokes.size - 1)
+            strokes.add(path)
         }
         invalidate()
     }
@@ -145,12 +125,44 @@ class CanvasView @JvmOverloads constructor(
     /** 清除画板 */
     fun clear() {
         clearCanvas()
-        rubbishPaths.clear()
-        paths.clear()
+        rubbishStrokes.clear()
+        strokes.clear()
         invalidate()
     }
 
     private fun clearCanvas() {
-        bitmapCanvas?.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR)
+    }
+
+    private class Stroke(private val startX: Float, private val startY: Float) {
+        private val paths = ArrayList<Path>()
+        private var currentPath: Path? = null
+
+        private var pointCount = 0
+        private var lastX = 0f
+        private var lastY = 0f
+        fun addPoint(x: Float, y: Float) {
+            if (currentPath == null) {
+                currentPath = Path()
+                currentPath?.moveTo(startX, startY)
+                paths.add(currentPath!!)
+            }
+            // 大于100步，新建一个Path
+            if (pointCount >= 100) {
+                pointCount = 0
+                currentPath = Path()
+                paths.add(currentPath!!)
+                currentPath?.moveTo(lastX, lastY)
+            }
+            currentPath?.lineTo(x, y)
+            lastX = x
+            lastY = y
+            pointCount++
+        }
+
+        fun draw(canvas: Canvas, paint: Paint) {
+            for (path in paths) {
+                canvas.drawPath(path, paint)
+            }
+        }
     }
 }
